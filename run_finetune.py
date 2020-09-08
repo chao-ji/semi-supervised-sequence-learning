@@ -3,7 +3,7 @@ import glob
 import numpy as np
 from model import SequenceClassifier
 import itertools
-import tokenization
+from commons import tokenization
 
 
 def _parse_example(serialized_example):
@@ -13,7 +13,7 @@ def _parse_example(serialized_example):
 
   parsed = tf.io.parse_single_example(serialized_example, parse_dict)
   token_ids = tf.sparse.to_dense(parsed['token_ids'])
-  label = tf.sparse.to_dense(parsed['label'])#[0]
+  label = tf.sparse.to_dense(parsed['label'])
 
   return token_ids, label
 
@@ -23,42 +23,27 @@ num_parallel_calls = 8
 random_seed = 0
 filenames = sorted(glob.glob('labeled/*.tfrecord'))
 
-dataset = tf.data.Dataset.from_tensor_slices(filenames).shuffle(
-    len(filenames), seed=random_seed)
 
-
-options = tf.data.Options()
-options.experimental_deterministic = False if shuffle else True
-dataset = dataset.interleave(
-    lambda filename: tf.data.TFRecordDataset(
-        filename, buffer_size=_READ_RECORD_BUFFER).shuffle(250),
-    cycle_length=num_parallel_calls,
-    num_parallel_calls=tf.data.experimental.AUTOTUNE).with_options(options)
-
-dataset = dataset.map(
-        _parse_example, num_parallel_calls=num_parallel_calls)
-
+from dataset import DatasetBuilder
 
 bucket_width = 100
 num_buckets = 10
 batch_size = 64 
+shuffle = True
+num_parallel_calls = 8
+random_seed = 42 
 
-def example_to_bucket_id(token_ids, _):
-  seq_len = tf.size(token_ids)
-  bucket_id = seq_len // bucket_width
-  return tf.cast(tf.minimum(num_buckets - 1, bucket_id), 'int64')
-  
 
-def batching_fn(bucket_id, grouped_dataset):
-  return grouped_dataset.padded_batch(
-      batch_size, ([None], [1]), drop_remainder=True)
+builder = DatasetBuilder(batch_size=batch_size,
+                           shuffle=shuffle,
+                           max_length=None,
+                           num_parallel_calls=num_parallel_calls,
+                           num_buckets=num_buckets,
+                           bucket_width=bucket_width,
+                           random_seed=random_seed)
 
-dataset = dataset.apply(tf.data.experimental.group_by_window(
-    key_func=example_to_bucket_id,
-    reduce_func=batching_fn,
-    window_size=batch_size))
-dataset = dataset.repeat(-1)
-dataset = dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+dataset = builder.build_finetune_dataset(filenames)
+
 
 vocab_path = 'vocab'
 subtokenizer = tokenization.restore_subtokenizer_from_vocab_files(vocab_path)
@@ -67,25 +52,15 @@ vocab_size = subtokenizer.vocab_size
 
 hidden_size = 512 
 
-model = SequenceClassifier(vocab_size, hidden_size) 
+model = SequenceClassifier(vocab_size, hidden_size, dropout=0.2, dropout_embedding=True) 
 
-ckpt_path = 'sa' #'sa'
+ckpt_path = 'lm' #'sa'
 ckpt = tf.train.Checkpoint(model=model)
 latest_ckpt = tf.train.latest_checkpoint(ckpt_path)
 print('Loaded latest checkpoint ', latest_ckpt)
 ckpt.restore(latest_ckpt).expect_partial()
 
-#dummy_inputs = tf.constant(np.random.randint(0, vocab_size, (batch_size, 18)))
-#dummy_padding_mask = dummy_inputs == 0
-#weights = np.load('lm_weights2.npy', allow_pickle=True)
-#model(dummy_inputs, dummy_padding_mask)
-#model._embedding_logits_layer.set_weights([weights[0]])
-#model._recurrent_layer.set_weights(weights[1:4]) 
-
-
 optimizer = tf.keras.optimizers.Adam()
-
-
 
 train_step_signature = [
     tf.TensorSpec(shape=(batch_size, None), dtype=tf.int64),
@@ -113,7 +88,7 @@ for i, (token_ids, labels) in enumerate(dataset):
   if i % 100 == 0:
     print(i, myloss)
 
-  if i == 3900:
+  if i == 1200:
     break 
 
 

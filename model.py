@@ -6,7 +6,8 @@ from commons.layers import EmbeddingLayer
 
 class Pretrainer(tf.keras.Model):
   """Base class of pretraining methods."""
-  def __init__(self, vocab_size, hidden_size, dropout_rate=0.2):
+  def __init__(
+      self, vocab_size, hidden_size, dropout_rate=0.2, dropout_embedding=False):
     """Constructor.
 
     Args:
@@ -14,11 +15,13 @@ class Pretrainer(tf.keras.Model):
         in the vocabulary.
       hidden_size: int scalar, the hidden size of continuous representation.
       dropout_rate: float scalar, dropout rate for the Dropout layers.
+      dropout_embedding: bool scalar, whether to apply dropout on embeddings.
     """
     super(Pretrainer, self).__init__()
     self._vocab_size = vocab_size
     self._hidden_size = hidden_size
     self._dropout_rate = dropout_rate
+    self._dropout_embedding = dropout_embedding
 
     self._embedding_logits_layer = EmbeddingLayer(
         vocab_size, hidden_size, scale_embeddings=False)
@@ -48,16 +51,18 @@ class SequenceAutoencoder(Pretrainer):
     src_token_embeddings = self._embedding_logits_layer(
         token_ids, 'embedding')
     tgt_token_embeddings = self._embedding_logits_layer(
-        token_ids[:, :-1], 'embedding')
+        tf.pad(token_ids, [[0, 0], [1, 0]])[:, :-1], 'embedding')
     padding_mask = token_ids != 0
 
-    src_token_embeddings = self._dropout_layer(
+    if self._dropout_embedding:
+      src_token_embeddings = self._dropout_layer(
         src_token_embeddings, training=training)
-    tgt_token_embeddings = self._dropout_layer(
-        tgt_token_embeddings, training=training)
+      tgt_token_embeddings = self._dropout_layer(
+          tgt_token_embeddings, training=training)
 
     _, h, c = self._recurrent_layer(
         src_token_embeddings, mask=padding_mask, training=training)
+
     outputs, _, _ = self._recurrent_layer(
         tgt_token_embeddings, initial_state=(h, c), training=training)
     logits = self._embedding_logits_layer(outputs, 'logits')
@@ -83,9 +88,13 @@ class LanguageModel(Pretrainer):
     """
     token_embeddings = self._embedding_logits_layer(
         token_ids, 'embedding')
-    token_embeddings = self._dropout_layer(token_embeddings, training=training)
+
+    if self._dropout_embedding:
+      token_embeddings = self._dropout_layer(
+          token_embeddings, training=training)
+
     outputs, h, c = self._recurrent_layer(
-        token_embeddings, states, training=training)
+        token_embeddings, initial_state=states, training=training)
 
     logits = self._embedding_logits_layer(outputs, 'logits')
     return logits, (h, c)
@@ -93,7 +102,7 @@ class LanguageModel(Pretrainer):
 
 class SequenceClassifier(tf.keras.Model):
   """Recurrent network that classifies sequences as positive or negative."""
-  def __init__(self, vocab_size, hidden_size, dropout=0.0):
+  def __init__(self, vocab_size, hidden_size, dropout=0.2, dropout_embedding=False):
     """Constructor.
 
     Args:
@@ -106,11 +115,13 @@ class SequenceClassifier(tf.keras.Model):
     self._vocab_size = vocab_size
     self._hidden_size = hidden_size
     self._dropout = dropout
+    self._dropout_embedding = dropout_embedding
 
     self._embedding_logits_layer = EmbeddingLayer(
         vocab_size, hidden_size, scale_embeddings=False)
     self._recurrent_layer = tf.keras.layers.LSTM(
         self._hidden_size, dropout=dropout)
+    self._dropout_layer = tf.keras.layers.Dropout(dropout)
 
     self._dense_layer = tf.keras.layers.Dense(hidden_size, activation='relu')
     self._logits_layer = tf.keras.layers.Dense(1)
@@ -128,6 +139,10 @@ class SequenceClassifier(tf.keras.Model):
     """
     padding_mask = tf.equal(token_ids, 0)
     embeddings = self._embedding_logits_layer(token_ids, 'embedding')
+    if self._dropout_embedding:
+      embeddings = self._dropout_layer(
+          embeddings, training=training)
+
     logits = self._logits_layer(self._dense_layer(self._recurrent_layer(
         embeddings, mask=tf.logical_not(padding_mask), training=training)))
 

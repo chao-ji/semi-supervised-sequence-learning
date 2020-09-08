@@ -1,3 +1,7 @@
+"""Script that parses and tokenizes the raw text files from the IMDB dataset to 
+build the vocabulary. The raw text files are encoded into subword token ids and 
+serialized into *.tfrecord files.
+"""
 import itertools
 import os
 
@@ -5,7 +9,8 @@ import tensorflow as tf
 from absl import app
 from absl import flags
 
-import tokenization
+from commons import tokenization
+from commons.utils import dict_to_example
 
 
 FLAGS = flags.FLAGS
@@ -58,11 +63,13 @@ def main(_):
       file_byte_limit=file_byte_limit)
   subtokenizer.save_to_file(vocab_name)
 
+  # labeled data for fine-tuning 
   data = [tf.io.gfile.GFile(fn) for fn in pos_filenames + neg_filenames]
   data = itertools.chain(*data)
   labels = [1] * 12500 + [0] * 12500
   generate_tfrecords(subtokenizer, data, total_shards, 'labeled', labels)
   
+  # unlabeled data for pretraining
   data = [tf.io.gfile.GFile(fn) for fn in 
       pos_filenames + neg_filenames + unlabeled_filenames]
   data = itertools.chain(*data)
@@ -70,7 +77,17 @@ def main(_):
 
 
 def generate_tfrecords(subtokenizer, data, total_shards, output_dir, labels=None):
-  """"""
+  """Generates TFRecord files for labeled or unlabeled datasets.
+
+  Args:
+    subtokenizer: a SubTokenizer instance.
+    data: an iterable of strings, the stream of text to be tokenized.
+    total_shards: int scalar, total number of *.tfrecord files.
+    output_dir: string scalar, directory to which *.tfrecord files will be 
+      written to.
+    labels: (Optional), the list of integers indicating the labels (1 for 
+      positives and 0 for negatives).
+  """
   if not os.path.exists(output_dir):
     os.makedirs(output_dir)
 
@@ -82,7 +99,7 @@ def generate_tfrecords(subtokenizer, data, total_shards, output_dir, labels=None
   writers = [tf.io.TFRecordWriter(fn) for fn in filepaths]
   shard = 0
 
-  for counter, (line, label) in enumerate(zip(data, labels)):
+  for line, label in zip(data, labels):
     line = line.strip()
 
     l = subtokenizer.encode(line, add_eos=True)
@@ -99,20 +116,6 @@ def generate_tfrecords(subtokenizer, data, total_shards, output_dir, labels=None
 
   for writer in writers:
     writer.close()
-
-def dict_to_example(dictionary):
-  """Convert dict to protobuf example message.
-
-  Args:
-    dictionary: a dict mapping string to list of integers
-
-  Returns:
-    a protobuf example message.
-  """
-  features = {}
-  for k, v in dictionary.items():
-    features[k] = tf.train.Feature(int64_list=tf.train.Int64List(value=v))
-  return tf.train.Example(features=tf.train.Features(feature=features))
 
 
 if __name__ == '__main__':
