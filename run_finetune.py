@@ -24,7 +24,7 @@ random_seed = 0
 filenames = sorted(glob.glob('labeled/*.tfrecord'))
 
 
-from dataset import DatasetBuilder
+from commons.dataset import SequenceClassifierDatasetBuilder 
 
 bucket_width = 100
 num_buckets = 10
@@ -34,7 +34,7 @@ num_parallel_calls = 8
 random_seed = 42 
 
 
-builder = DatasetBuilder(batch_size=batch_size,
+builder = SequenceClassifierDatasetBuilder(batch_size=batch_size,
                            shuffle=shuffle,
                            max_length=None,
                            num_parallel_calls=num_parallel_calls,
@@ -52,7 +52,7 @@ vocab_size = subtokenizer.vocab_size
 
 hidden_size = 512 
 
-model = SequenceClassifier(vocab_size, hidden_size, dropout=0.2, dropout_embedding=True) 
+model = SequenceClassifier(vocab_size, hidden_size, dropout=0.1, dropout_embedding=True) 
 
 ckpt_path = 'lm' #'sa'
 ckpt = tf.train.Checkpoint(model=model)
@@ -60,7 +60,7 @@ latest_ckpt = tf.train.latest_checkpoint(ckpt_path)
 print('Loaded latest checkpoint ', latest_ckpt)
 ckpt.restore(latest_ckpt).expect_partial()
 
-optimizer = tf.keras.optimizers.Adam()
+optimizer = tf.keras.optimizers.Adam(1e-4)
 
 train_step_signature = [
     tf.TensorSpec(shape=(batch_size, None), dtype=tf.int64),

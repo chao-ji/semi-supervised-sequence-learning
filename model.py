@@ -102,7 +102,8 @@ class LanguageModel(Pretrainer):
 
 class SequenceClassifier(tf.keras.Model):
   """Recurrent network that classifies sequences as positive or negative."""
-  def __init__(self, vocab_size, hidden_size, dropout=0.2, dropout_embedding=False):
+  def __init__(
+      self, vocab_size, hidden_size, dropout=0.2, dropout_embedding=False):
     """Constructor.
 
     Args:
@@ -110,6 +111,7 @@ class SequenceClassifier(tf.keras.Model):
         in the vocabulary.
       hidden_size: int scalar, the hidden size of continuous representation.
       dropout_rate: float scalar, dropout rate for the Dropout layers.
+      dropout_embedding: bool scalar, whether to apply dropout on embeddings.
     """
     super(SequenceClassifier, self).__init__()
     self._vocab_size = vocab_size
@@ -145,5 +147,4 @@ class SequenceClassifier(tf.keras.Model):
 
     logits = self._logits_layer(self._dense_layer(self._recurrent_layer(
         embeddings, mask=tf.logical_not(padding_mask), training=training)))
-
     return logits

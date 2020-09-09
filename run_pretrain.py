@@ -3,13 +3,13 @@ import glob
 from model import SequenceAutoencoder
 from model import LanguageModel
 
-from dataset import DatasetBuilder
+from commons.dataset import SequenceClassifierDatasetBuilder 
 from commons import tokenization
 from commons import layers
 import os
 
 def main():
-  method = 'sa'
+  method = 'lm'
   batch_size = 64
   shuffle = True
   max_length = 500 if method == 'sa' else None
@@ -23,7 +23,7 @@ def main():
   clip_norm = 5.0
 
 
-  builder = DatasetBuilder(batch_size=batch_size,
+  builder = SequenceClassifierDatasetBuilder(batch_size=batch_size,
                            shuffle=shuffle,
                            max_length=max_length,
                            num_parallel_calls=num_parallel_calls,
@@ -124,7 +124,7 @@ def main():
       if step.numpy() % 10000 == 0:
         ckpt.save(os.path.join(ckpt_path, 'model'))
 
-      if step.numpy() == 200000:
+      if step.numpy() == 120000:
         break
   else:
     for i, token_ids in enumerate(dataset):
