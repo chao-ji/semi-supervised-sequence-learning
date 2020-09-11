@@ -1,6 +1,6 @@
 # Semi-supervised-sequence-learning
 
-This repo documents the experiments that reproduces the results presented in the paper [semi-supervised-sequence-learning](https://arxiv.org/abs/1511.01432). Briefly, we pretrains a Sequence Autoencoder or Language Model on *unlabeled* text data, and then fine-tunes a RNN-based sequence classifier initialized with the pretrained weights using *labeled* text data, which gives rises to better classification accuracy than weights initialized randomly. 
+This repo documents the experiments that reproduce the results presented in the paper [semi-supervised-sequence-learning](https://arxiv.org/abs/1511.01432). Briefly, we pretrain a Sequence Autoencoder or Language Model on *unlabeled* text data, and then fine-tune an RNN-based sequence classifier initialized with the pretrained weights using *labeled* text data, which gives rises to better classification accuracy than weights initialized randomly. 
 
 ## Data Preparation
 
