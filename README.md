@@ -51,15 +51,28 @@ The pretrained weights will be saved to checkpoint files `sa` (for sequence auto
 
 ## Fine-tuning
 
+To fine-tune a pre-trained language model (`method=lm`; set `method=sa` for sequence auto-encoder) on labeled dataset, run
 ```
 python run_finetune.py \
   --data_dir=labeled \
   --vocab_path=vocab \
+  --method=lm \
   --test_pos_filename=aclImdb/test/pos/pos.txt \
   --test_neg_filename=aclImdb/test/neg/neg.txt \
 ```
 
 Depending on which method was used for the pretraining step, weights (of a single-layer LSTM and an embedding matrix) will be loaded from checkpoints in either `sa` or `lm`, and the LSTM-based sequence classifier will be fine-tuned for dramatically fewer iterations compared to the pretraining stage. 
+
+As the baseline that the fine-tuning approach is compared against, one can train the LSTM-based sequence classifier on labeled data from scatch (i.w. without initializing from pretrained weights):
+
+```
+python run_finetune.py \
+  --data_dir=labeled \
+  --vocab_path=vocab \
+  --no_finetune=True \
+  --test_pos_filename=aclImdb/test/pos/pos.txt \
+  --test_neg_filename=aclImdb/test/neg/neg.txt \
+```
 
 
 ## Results
