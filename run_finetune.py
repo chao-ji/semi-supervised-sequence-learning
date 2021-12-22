@@ -92,7 +92,7 @@ def main(_):
       raise ValueError('No checkpoint found!')
     ckpt.restore(latest_ckpt).expect_partial()
 
-  optimizer = tf.keras.optimizers.Adam()
+  optimizer = tf.keras.optimizers.Adam(learning_rate=1e-4)
 
   train_step_signature = [
       tf.TensorSpec(shape=(batch_size, None), dtype=tf.int64),

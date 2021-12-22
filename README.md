@@ -56,9 +56,9 @@ To fine-tune a pre-trained language model (`method=lm`; set `method=sa` for sequ
 python run_finetune.py \
   --data_dir=labeled \
   --vocab_path=vocab \
-  --method=lm \
+  --method=sa \
   --test_pos_filename=aclImdb/test/pos/pos.txt \
-  --test_neg_filename=aclImdb/test/neg/neg.txt \
+  --test_neg_filename=aclImdb/test/neg/neg.txt
 ```
 
 Depending on which method was used for the pretraining step, weights (of a single-layer LSTM and an embedding matrix) will be loaded from checkpoints in either `sa` or `lm`, and the LSTM-based sequence classifier will be fine-tuned for dramatically fewer iterations compared to the pretraining stage. 
@@ -71,7 +71,7 @@ python run_finetune.py \
   --vocab_path=vocab \
   --no_finetune=True \
   --test_pos_filename=aclImdb/test/pos/pos.txt \
-  --test_neg_filename=aclImdb/test/neg/neg.txt \
+  --test_neg_filename=aclImdb/test/neg/neg.txt
 ```
 
 

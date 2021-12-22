@@ -25,7 +25,7 @@ flags.DEFINE_list(
     'unlabeled_filenames', None, 'Paths to the text files storing unlabeled '
         'examples (one review per line).')
 flags.DEFINE_float(
-    'file_byte_limit', 1e6, 'Number of bytes to read from each text file.')
+    'file_char_limit', 1e6, 'Number of chars to read from each text file.')
 flags.DEFINE_integer(
     'target_vocab_size', 32768, 'The desired vocabulary size. Ignored if '
         '`min_count` is not None.')
@@ -48,7 +48,7 @@ def main(_):
   pos_filenames = FLAGS.pos_filenames
   neg_filenames = FLAGS.neg_filenames
   unlabeled_filenames = FLAGS.unlabeled_filenames
-  file_byte_limit = FLAGS.file_byte_limit
+  file_char_limit = FLAGS.file_char_limit
   target_vocab_size = FLAGS.target_vocab_size
   threshold = FLAGS.threshold
   min_count = FLAGS.min_count
@@ -60,7 +60,7 @@ def main(_):
       target_vocab_size,
       threshold,
       min_count=min_count,
-      file_byte_limit=file_byte_limit)
+      file_char_limit=file_char_limit)
   subtokenizer.save_to_file(vocab_name)
 
   # labeled data for fine-tuning 
